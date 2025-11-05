@@ -86,5 +86,5 @@ Desktop.ini
 .matplotlib/
 
 # Project outputs (generated reports/plots/tables)
-outputs/
+# outputs/
 
