@@ -27,7 +27,7 @@ def main():
     X_scaled, preprocess_info = preprocess_features(feature_df)
 
     # Run clustering variants
-    k_values = [3, 5, 7]
+    k_values = [2, 3, 4]
     kmeans_runs = run_kmeans_set(X_scaled, k_values)
     birch_runs = run_birch_set(X_scaled, k_values)
     dbscan_runs = run_dbscan_set(X_scaled, eps_list=[0.3, 0.5, 0.7], min_samples=5)
