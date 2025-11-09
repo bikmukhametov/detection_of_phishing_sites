@@ -32,31 +32,31 @@ def build_cluster_summary_tables(
 
         rows.append(
             {
-                "cluster": int(cl),
-                "count": n_in_cluster,
-                "percent_of_total": 100.0 * n_in_cluster / total_n,
-                "phishing_percent_in_cluster": 100.0 * phishing_in_cluster / max(n_in_cluster, 1),
-                "phishing_share_of_all_phishing": 100.0 * phishing_in_cluster / total_phishing,
+                "кластер": int(cl),
+                "количество": n_in_cluster,
+                "процент от общего": 100.0 * n_in_cluster / total_n,
+                "процент фишинга в кластере": 100.0 * phishing_in_cluster / max(n_in_cluster, 1),
+                "доля фишинга от всего фишинга": 100.0 * phishing_in_cluster / total_phishing,
             }
         )
 
     # Handle DBSCAN noise label (-1) ordering last
     df = pd.DataFrame(rows)
-    if (df["cluster"] == -1).any():
+    if (df["кластер"] == -1).any():
         df = pd.concat(
-            [df[df["cluster"] != -1].sort_values("cluster"), df[df["cluster"] == -1]],
+            [df[df["кластер"] != -1].sort_values("кластер"), df[df["кластер"] == -1]],
             ignore_index=True,
         )
     else:
-        df = df.sort_values("cluster").reset_index(drop=True)
+        df = df.sort_values("кластер").reset_index(drop=True)
 
     # Add totals row at bottom
     totals = {
-        "cluster": "TOTAL",
-        "count": int(total_n),
-        "percent_of_total": 100.0,
-        "phishing_percent_in_cluster": np.nan,
-        "phishing_share_of_all_phishing": 100.0,
+        "кластер": "ИТОГО",
+        "количество": int(total_n),
+        "процент от общего": 100.0,
+        "процент фишинга в кластере": np.nan,
+        "доля фишинга от всего фишинга": 100.0,
     }
     df = pd.concat([df, pd.DataFrame([totals])], ignore_index=True)
     return df

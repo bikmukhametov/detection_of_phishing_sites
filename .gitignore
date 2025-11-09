@@ -1,90 +1,11 @@
-# Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[cod]
-*$py.class
 
-# C extensions
-*.so
+приказ.txt
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-pytest_cache/
-.pytest_cache/
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pyre/
-.pytype/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# Type checkers / linters
-.mypy_cache/
-.ruff_cache/
-.dmypy.json
-dmypy.json
-
-# Environments
 .env
 .venv
 env/
 venv/
-ENV/
-env.bak/
-venv.bak/
-__pypackages__/
 
-# IDE / Editor
 .idea/
 .vscode/
-*.code-workspace
-.ropeproject
-.spyderproject
-.spyproject
-
-# OS files
-.DS_Store
-Thumbs.db
-Desktop.ini
-
-# Logs
-*.log
-
-# Matplotlib cache
-.matplotlib/
-
-# Project outputs (generated reports/plots/tables)
-# outputs/
-
