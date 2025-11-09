@@ -255,6 +255,160 @@ def plot_clusters_pca(
     plt.close()
 
 
+def plot_cluster_means_with_phishing(
+    X_scaled: np.ndarray,
+    feature_names: List[str],
+    clusters: np.ndarray,
+    label_series: pd.Series,
+    df_index: pd.Index,
+    phishing_positive_value: int = -1,
+    title_prefix: str = "Средние значения кластеров",
+    out_dir: Path = None,
+) -> None:
+    """Plot cluster means with overlaid phishing means.
+    
+    Creates:
+    - 1 plot with all features
+    - 4 plots with 9 features each, grouped by similar scales
+    
+    Args:
+        X_scaled: Scaled feature matrix
+        feature_names: List of feature names
+        clusters: Cluster labels
+        label_series: True labels (phishing/legitimate)
+        df_index: Index of the original dataframe
+        phishing_positive_value: Value indicating phishing sites (default: -1)
+        title_prefix: Prefix for plot titles
+        out_dir: Output directory for plots
+    """
+    _ensure_dir(out_dir)
+    
+    # Prepare data
+    df_scaled = pd.DataFrame(X_scaled, columns=feature_names, index=df_index)
+    df_scaled["cluster"] = clusters
+    
+    # Align labels
+    labels = label_series.reindex(df_index)
+    df_scaled["is_phishing"] = (labels == phishing_positive_value).values
+    
+    # Compute cluster means
+    unique_clusters = sorted(np.unique(clusters[clusters >= 0]))
+    cluster_means = df_scaled.groupby("cluster")[feature_names].mean()
+    
+    # Compute phishing means (all phishing sites)
+    phishing_mask = df_scaled["is_phishing"]
+    phishing_means = df_scaled[phishing_mask][feature_names].mean()
+    
+    # Number of clusters and palette
+    k = len(unique_clusters)
+    palette = sns.color_palette("tab10", n_colors=k)
+    
+    # Group features by scale (based on range of means across clusters and phishing)
+    # Compute ranges for each feature to group by similar scales
+    all_means = pd.concat([cluster_means[feature_names], phishing_means[feature_names].to_frame().T])
+    feature_ranges = all_means[feature_names].max() - all_means[feature_names].min()
+    feature_ranges_sorted = feature_ranges.sort_values()
+    
+    # Split into 4 groups of 9 features, grouping by similar scales (ranges)
+    n_features_per_group = 9
+    n_groups = 4
+    total_needed = n_groups * n_features_per_group
+    
+    # Group features with similar scales together
+    # Features are sorted by range, so consecutive features have similar scales
+    sorted_feature_list = feature_ranges_sorted.index.tolist()
+    
+    # Create 4 groups with features of similar scales
+    feature_groups = []
+    if len(sorted_feature_list) >= total_needed:
+        # Take top 36 features with largest ranges for detailed analysis
+        # Reverse to start with largest ranges
+        top_features = sorted_feature_list[-total_needed:]
+        top_features.reverse()
+        
+        # Divide into 4 groups of 9 - each group has features with similar scales
+        # since they're consecutive in the sorted list
+        for i in range(n_groups):
+            start_idx = i * n_features_per_group
+            end_idx = start_idx + n_features_per_group
+            if end_idx <= len(top_features):
+                feature_groups.append(top_features[start_idx:end_idx])
+    else:
+        # Fewer features - divide all features into groups
+        # Since features are sorted by scale, consecutive features have similar scales
+        n_features = len(sorted_feature_list)
+        features_per_group = max(1, n_features // n_groups)
+        remainder = n_features % n_groups if n_features >= n_groups else 0
+        
+        start_idx = 0
+        groups_created = 0
+        for i in range(n_groups):
+            if start_idx >= n_features:
+                break
+            # Distribute remainder features across first groups
+            group_size = features_per_group + (1 if i < remainder else 0)
+            end_idx = min(start_idx + group_size, n_features)
+            feature_groups.append(sorted_feature_list[start_idx:end_idx])
+            start_idx = end_idx
+            groups_created += 1
+    
+    # Plot 1: All features
+    fig, ax = plt.subplots(figsize=(max(16, len(feature_names) * 0.3), 8))
+    x_pos = np.arange(len(feature_names))
+    width = 0.8 / (k + 1)
+    
+    for idx, cl in enumerate(unique_clusters):
+        means = cluster_means.loc[cl, feature_names].values
+        ax.plot(x_pos, means, 'o-', color=palette[idx % len(palette)], 
+                label=f'Кластер {cl}', linewidth=2, markersize=4, alpha=0.8)
+    
+    # Overlay phishing means (black)
+    phishing_values = phishing_means[feature_names].values
+    ax.plot(x_pos, phishing_values, 's-', color='black', 
+            label='Все фишинговые', linewidth=2.5, markersize=5, alpha=0.9, zorder=10)
+    
+    ax.set_xlabel('Признак', fontsize=12)
+    ax.set_ylabel('Среднее значение (стандартизованное)', fontsize=12)
+    ax.set_title(f'{title_prefix} — все признаки', fontsize=14, fontweight='bold')
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(feature_names, rotation=90, ha='right', fontsize=8)
+    ax.legend(loc='best', fontsize=9)
+    ax.grid(True, alpha=0.3, linestyle='--')
+    plt.tight_layout()
+    plt.savefig(out_dir / "cluster_means_all_features.png", dpi=150, bbox_inches='tight')
+    plt.close()
+    
+    # Plot 2-5: Groups of 9 features
+    for group_idx, group_features in enumerate(feature_groups, start=1):
+        if not group_features:
+            continue
+            
+        fig, ax = plt.subplots(figsize=(14, 8))
+        x_pos = np.arange(len(group_features))
+        
+        for idx, cl in enumerate(unique_clusters):
+            means = cluster_means.loc[cl, group_features].values
+            ax.plot(x_pos, means, 'o-', color=palette[idx % len(palette)], 
+                    label=f'Кластер {cl}', linewidth=2.5, markersize=6, alpha=0.8)
+        
+        # Overlay phishing means (black)
+        phishing_values = phishing_means[group_features].values
+        ax.plot(x_pos, phishing_values, 's-', color='black', 
+                label='Все фишинговые', linewidth=3, markersize=7, alpha=0.9, zorder=10)
+        
+        ax.set_xlabel('Признак', fontsize=12)
+        ax.set_ylabel('Среднее значение (стандартизованное)', fontsize=12)
+        ax.set_title(f'{title_prefix} — группа {group_idx} ({len(group_features)} признаков)', 
+                    fontsize=14, fontweight='bold')
+        ax.set_xticks(x_pos)
+        ax.set_xticklabels(group_features, rotation=45, ha='right', fontsize=10)
+        ax.legend(loc='best', fontsize=10)
+        ax.grid(True, alpha=0.3, linestyle='--')
+        plt.tight_layout()
+        plt.savefig(out_dir / f"cluster_means_group_{group_idx}.png", dpi=150, bbox_inches='tight')
+        plt.close()
+
+
 def plot_chi2_feature_importance(
     feature_df: pd.DataFrame,
     label_series: pd.Series,

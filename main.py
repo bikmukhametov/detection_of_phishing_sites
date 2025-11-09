@@ -15,6 +15,7 @@ from src.evaluation import build_cluster_summary_tables
 from src.plots import (
     plot_low_cardinality_proportions_paged,
     plot_clusters_pca,
+    plot_cluster_means_with_phishing,
     plot_chi2_feature_importance,
 )
 
@@ -79,8 +80,20 @@ def main():
             clusters=clusters,
             title_prefix=f"{run_name} — доли признаков",
             out_dir=run_dir / "plots_low_card_props",
-            features_per_page=10,
+            features_per_page=9,
             max_unique=5,
+        )
+
+        # Plots — cluster means with phishing overlay
+        plot_cluster_means_with_phishing(
+            X_scaled=X_scaled,
+            feature_names=list(feature_df.columns),
+            clusters=clusters,
+            label_series=label_series,
+            df_index=feature_df.index,
+            phishing_positive_value=phishing_positive_value,
+            title_prefix=f"{run_name} — средние значения кластеров",
+            out_dir=run_dir / "plots_cluster_means",
         )
 
         # Plots — PCA visualization for clusters
