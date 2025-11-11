@@ -18,10 +18,140 @@ from src.plots import (
     plot_cluster_means_with_phishing,
     plot_chi2_feature_importance,
 )
+from src.feature_selection import (
+    add_del_algorithm,
+    genetic_algorithm,
+    stochastic_search_with_adaptation,
+    evaluate_feature_set,
+)
+from src.feature_analysis import (
+    save_feature_selection_results,
+    plot_algorithm_comparison,
+    plot_quality_vs_feature_count,
+    plot_convergence_curves,
+    plot_feature_count_progression,
+    create_summary_markdown,
+)
 
 
 def ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
+
+
+def run_feature_selection_analysis(X_scaled, feature_df, label_series, output_dir: Path):
+    """
+    Run all feature selection algorithms and generate analysis.
+    
+    Args:
+        X_scaled: Scaled feature matrix
+        feature_df: Original feature DataFrame
+        label_series: Target labels
+        output_dir: Output directory for results
+    """
+    ensure_dir(output_dir)
+    
+    feature_names = list(feature_df.columns)
+    y = label_series.values
+    
+    print("\n" + "="*60)
+    print("АНАЛИЗ ОТБОРА ПРИЗНАКОВ")
+    print("="*60)
+    
+    # Collect results from all algorithms
+    results = {}
+    
+    # 1. Add-Del Algorithm
+    print("\nЗапуск алгоритма Add-Del...")
+    try:
+        selected_indices_addel, stats_addel = add_del_algorithm(
+            X_scaled, y, feature_names,
+            max_iterations=30,
+            patience=5,
+            test_size=0.2
+        )
+        
+        selected_names_addel = [feature_names[i] for i in selected_indices_addel]
+        metrics_addel = evaluate_feature_set(X_scaled, y, selected_indices_addel)
+        
+        results['Add-Del'] = {
+            'selected_features': selected_indices_addel,
+            'selected_feature_names': selected_names_addel,
+            'metrics': metrics_addel,
+            'stats': stats_addel,
+        }
+        print(f"Add-Del: выбрано {len(selected_indices_addel)} признаков, F1={metrics_addel['f1']:.4f}")
+    except Exception as e:
+        print(f"Ошибка в Add-Del: {e}")
+    
+    # 2. Genetic Algorithm
+    print("\nЗапуск генетического алгоритма...")
+    try:
+        selected_indices_ga, stats_ga = genetic_algorithm(
+            X_scaled, y, feature_names,
+            population_size=50,
+            generations=35,
+            mutation_rate=0.15,
+            crossover_prob=0.8,
+            patience=10,
+            test_size=0.2
+        )
+        
+        selected_names_ga = [feature_names[i] for i in selected_indices_ga]
+        metrics_ga = evaluate_feature_set(X_scaled, y, selected_indices_ga)
+        
+        results['Genetic Algorithm'] = {
+            'selected_features': selected_indices_ga,
+            'selected_feature_names': selected_names_ga,
+            'metrics': metrics_ga,
+            'stats': stats_ga,
+        }
+        print(f"Genetic Algorithm: выбрано {len(selected_indices_ga)} признаков, F1={metrics_ga['f1']:.4f}")
+    except Exception as e:
+        print(f"Ошибка в Genetic Algorithm: {e}")
+    
+    # 3. Stochastic Search with Adaptation (SPA)
+    print("\nЗапуск стохастического поиска с адаптацией (СПА)...")
+    try:
+        selected_indices_spa, stats_spa = stochastic_search_with_adaptation(
+            X_scaled, y, feature_names,
+            j0=1,
+            T=25,
+            r=10,
+            h=0.05,
+            d=3,
+            test_size=0.2,
+        )
+
+        selected_names_spa = [feature_names[i] for i in selected_indices_spa]
+        metrics_spa = evaluate_feature_set(X_scaled, y, selected_indices_spa)
+
+        results['Stochastic Search (SPA)'] = {
+            'selected_features': selected_indices_spa,
+            'selected_feature_names': selected_names_spa,
+            'metrics': metrics_spa,
+            'stats': stats_spa,
+        }
+        print(f"SPA: выбрано {len(selected_indices_spa)} признаков, F1={metrics_spa['f1']:.4f}")
+    except Exception as e:
+        print(f"Ошибка в SPA: {e}")
+    
+    if not results:
+        print("\n⚠ Не удалось запустить ни один алгоритм отбора признаков!")
+        return
+    
+    # Save and visualize results
+    print("\nСохранение результатов...")
+    save_feature_selection_results(results, output_dir)
+    
+    print("Создание графиков сравнения...")
+    plot_algorithm_comparison(results, output_dir)
+    plot_quality_vs_feature_count(results, output_dir)
+    plot_convergence_curves(results, output_dir)
+    plot_feature_count_progression(results, output_dir)
+    create_summary_markdown(results, output_dir, feature_names)
+    
+    print(f"Результаты отбора признаков сохранены в: {output_dir}")
+    print("\n" + "="*60)
 
 
 def main():
@@ -44,7 +174,7 @@ def main():
     )
 
     # Run clustering variants
-    k_values = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+    k_values = [2, 3, 4, 5, 6, 7, 8, 9]
     kmeans_runs = run_kmeans_set(X_scaled, k_values)
     birch_runs = run_birch_set(X_scaled, k_values)
 
@@ -54,6 +184,10 @@ def main():
     all_runs.update({f"birch_k={k}": res for k, res in birch_runs.items()})
 
     phishing_positive_value = -1  # -1 — фишинг, 1 — законный
+
+    # Run feature selection analysis
+    feature_selection_out = out_root / "feature_selection"
+    run_feature_selection_analysis(X_scaled, feature_df, label_series, feature_selection_out)
 
     # For each run: save tables and plots
     for run_name, run_info in all_runs.items():
