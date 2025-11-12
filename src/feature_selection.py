@@ -68,12 +68,17 @@ class FeatureSelectionTracker:
         self.iterations = []
         self.selected_features_history = []
         self.quality_history = []
+        self.phase_history = []  # For Add-Del: 'add' or 'del'
+        self.complexity_history = []  # For SPA: complexity j
         
-    def record_iteration(self, iteration: int, selected_indices: np.ndarray, quality: float):
+    def record_iteration(self, iteration: int, selected_indices: np.ndarray, quality: float, 
+                        phase: str = None, complexity: int = None):
         """Record statistics for an iteration."""
         self.iterations.append(iteration)
         self.selected_features_history.append(selected_indices.copy())
         self.quality_history.append(quality)
+        self.phase_history.append(phase)
+        self.complexity_history.append(complexity)
     
     def get_selected_feature_names(self, iteration_idx: int = -1):
         """Get feature names for a specific iteration."""
@@ -128,19 +133,91 @@ def add_del_algorithm(X, y, feature_names: List[str],
     best_Q = float('inf')
     best_J = np.array([], dtype=int)
     
-    # Add phase
-    add_iteration = 0
-    while len(J_t) < n_features and add_iteration < max_iterations:
-        add_iteration += 1
-        t += 1
+    # Record initial state (empty set)
+    if len(J_t) == 0:
+        # Evaluate empty set
+        Q_empty = 1.0  # Error rate for empty set (no features = 100% error)
+        tracker.record_iteration(0, J_t, Q_empty, phase='init')
+        Q_star = Q_empty
+        best_Q = Q_empty
+    
+    # Outer loop: repeat Add and Del phases while Q decreases (according to pseudocode)
+    max_outer_iterations = 10  # Prevent infinite loops
+    outer_iter = 0
+    
+    while outer_iter < max_outer_iterations:
+        outer_iter += 1
+        Q_before_cycle = Q_star
         
-        # Find feature to add that minimizes Q
-        best_f = None
-        best_Q_f = float('inf')
+        # Add phase
+        add_iteration = 0
+        while len(J_t) < n_features and add_iteration < max_iterations:
+            add_iteration += 1
+            t += 1
+            
+            # Find feature to add that minimizes Q
+            best_f = None
+            best_Q_f = float('inf')
+            
+            for f in range(n_features):
+                if f not in J_t:
+                    J_candidate = np.sort(np.append(J_t, f))
+                    X_train_subset = X_train[:, J_candidate]
+                    X_test_subset = X_test[:, J_candidate]
+                    
+                    try:
+                        y_pred, _, _ = train_classifier(X_train_subset, y_train, X_test_subset, y_test)
+                        Q_f = compute_quality_criterion(y_test, y_pred)
+                        
+                        if Q_f < best_Q_f:
+                            best_Q_f = Q_f
+                            best_f = f
+                    except:
+                        continue
+            
+            if best_f is not None:
+                J_t = np.sort(np.append(J_t, best_f))
+                
+                # Record statistics - record every iteration according to pseudocode
+                tracker.record_iteration(t, J_t, best_Q_f, phase='add')
+                
+                if best_Q_f < Q_star:
+                    t_star = t
+                    Q_star = best_Q_f
+                    best_J = J_t.copy()
+                
+                if t - t_star >= d:
+                    break
+            else:
+                # Even if no feature found, record current state
+                if len(J_t) > 0:
+                    # Re-evaluate current set
+                    X_train_subset = X_train[:, J_t]
+                    X_test_subset = X_test[:, J_t]
+                    try:
+                        y_pred, _, _ = train_classifier(X_train_subset, y_train, X_test_subset, y_test)
+                        Q_current = compute_quality_criterion(y_test, y_pred)
+                        tracker.record_iteration(t, J_t, Q_current, phase='add')
+                    except:
+                        pass
+                break
         
-        for f in range(n_features):
-            if f not in J_t:
-                J_candidate = np.sort(np.append(J_t, f))
+        # Del phase
+        del_iteration = 0
+        while len(J_t) > 0 and del_iteration < max_iterations:
+            del_iteration += 1
+            t += 1
+            
+            # Find feature to remove that minimizes Q
+            best_f = None
+            best_Q_f = float('inf')
+            
+            for f in J_t:
+                J_candidate = J_t[J_t != f]
+                
+                if len(J_candidate) == 0:
+                    continue
+                
                 X_train_subset = X_train[:, J_candidate]
                 X_test_subset = X_test[:, J_candidate]
                 
@@ -153,67 +230,44 @@ def add_del_algorithm(X, y, feature_names: List[str],
                         best_f = f
                 except:
                     continue
-        
-        if best_f is not None:
-            J_t = np.sort(np.append(J_t, best_f))
             
-            # Record statistics
-            tracker.record_iteration(t, J_t, best_Q_f)
-            
-            if best_Q_f < Q_star:
-                t_star = t
-                Q_star = best_Q_f
-                best_J = J_t.copy()
-            
-            if t - t_star >= d:
+            if best_f is not None:
+                J_t = J_t[J_t != best_f]
+                
+                # Record statistics - record every iteration according to pseudocode
+                if len(J_t) > 0:
+                    tracker.record_iteration(t, J_t, best_Q_f, phase='del')
+                    
+                    if best_Q_f < Q_star:
+                        t_star = t
+                        Q_star = best_Q_f
+                        best_J = J_t.copy()
+                    
+                    if t - t_star >= d:
+                        break
+                else:
+                    # Record empty set
+                    tracker.record_iteration(t, J_t, best_Q_f, phase='del')
+                    if best_Q_f < Q_star:
+                        t_star = t
+                        Q_star = best_Q_f
+                        best_J = J_t.copy()
+            else:
+                # Even if no feature to remove, record current state
+                if len(J_t) > 0:
+                    X_train_subset = X_train[:, J_t]
+                    X_test_subset = X_test[:, J_t]
+                    try:
+                        y_pred, _, _ = train_classifier(X_train_subset, y_train, X_test_subset, y_test)
+                        Q_current = compute_quality_criterion(y_test, y_pred)
+                        tracker.record_iteration(t, J_t, Q_current, phase='del')
+                    except:
+                        pass
                 break
-        else:
-            break
-    
-    # Del phase
-    del_iteration = 0
-    while len(J_t) > 0 and del_iteration < max_iterations:
-        del_iteration += 1
-        t += 1
         
-        # Find feature to remove that minimizes Q
-        best_f = None
-        best_Q_f = float('inf')
-        
-        for f in J_t:
-            J_candidate = J_t[J_t != f]
-            
-            if len(J_candidate) == 0:
-                continue
-            
-            X_train_subset = X_train[:, J_candidate]
-            X_test_subset = X_test[:, J_candidate]
-            
-            try:
-                y_pred, _, _ = train_classifier(X_train_subset, y_train, X_test_subset, y_test)
-                Q_f = compute_quality_criterion(y_test, y_pred)
-                
-                if Q_f < best_Q_f:
-                    best_Q_f = Q_f
-                    best_f = f
-            except:
-                continue
-        
-        if best_f is not None:
-            J_t = J_t[J_t != best_f]
-            
-            # Record statistics
-            if len(J_t) > 0:
-                tracker.record_iteration(t, J_t, best_Q_f)
-                
-                if best_Q_f < Q_star:
-                    t_star = t
-                    Q_star = best_Q_f
-                    best_J = J_t.copy()
-                
-                if t - t_star >= d:
-                    break
-        else:
+        # Check if Q improved in this cycle
+        if Q_star >= Q_before_cycle:
+            # No improvement, stop outer loop
             break
     
     if len(best_J) == 0:
@@ -290,62 +344,64 @@ def genetic_algorithm(X, y, feature_names: List[str],
     
     best_fitness = -float('inf')
     best_chromosome = None
+    t_star = 0
+    Q_star = float('inf')
     
-    # Determine selection_size (number of individuals to use as parents)
+    # Determine selection_size (number of individuals to keep each generation)
     if selection_size is None:
         selection_size = max(2, population_size // 4)
 
-    # Track best and early stopping per pseudocode
-    Q_star = float('inf')
-    t_star = 0
-
-    for gen in range(1, generations + 1):
-        # Evaluate fitness -> lower Q is better, but fitness is higher when Q is lower
+    for gen in range(generations):
+        # Evaluate fitness
         fitnesses = np.array([fitness(chrom) for chrom in population])
-        # Rank population by fitness descending (equivalently Q ascending)
+
+        # Rank population and select top individuals (R_t)
         ranked_idx = np.argsort(-fitnesses)
-        # Rt: selected parents (top selection_size)
         Rt_idx = ranked_idx[:selection_size]
         Rt = population[Rt_idx]
 
-        # Best individual in current generation
+        # Track best - record best solution of each generation (J¹_t according to pseudocode)
         current_best_idx = ranked_idx[0]
-        current_best_chrom = population[current_best_idx].copy()
-        current_selected = np.where(current_best_chrom == 1)[0]
-        if len(current_selected) > 0:
-            X_subset = X_test[:, current_selected]
-            y_pred, _, _ = train_classifier(X_train[:, current_selected], y_train, X_subset, y_test)
-            Q_curr = compute_quality_criterion(y_test, y_pred)
+        best_chromosome_gen = population[current_best_idx].copy()
+        selected_indices_gen = np.where(best_chromosome_gen == 1)[0]
+        
+        # Record best solution of this generation
+        if len(selected_indices_gen) > 0:
+            X_subset = X_test[:, selected_indices_gen]
+            y_pred, _, _ = train_classifier(X_train[:, selected_indices_gen], y_train,
+                                           X_subset, y_test)
+            Q_gen = compute_quality_criterion(y_test, y_pred)
+            tracker.record_iteration(gen + 1, selected_indices_gen, Q_gen)
         else:
-            Q_curr = float('inf')
-
-        # Update global best Q* and t*
-        if Q_curr < Q_star:
-            Q_star = Q_curr
-            t_star = gen
-            best_chromosome = current_best_chrom.copy()
-            # record iteration (use generation index)
-            tracker.record_iteration(gen, current_selected, Q_curr)
-
-        # If no improvement for patience generations -> stop and return best
-        if gen - t_star >= patience:
+            # Empty set
+            tracker.record_iteration(gen + 1, selected_indices_gen, 1.0)
+        
+        # Update global best
+        if fitnesses[current_best_idx] > best_fitness:
+            best_fitness = fitnesses[current_best_idx]
+            best_chromosome = best_chromosome_gen.copy()
+        
+        # Update Q_star and t_star for early stopping (step 6-7 of pseudocode)
+        if len(selected_indices_gen) > 0:
+            if Q_gen < Q_star:
+                t_star = gen + 1
+                Q_star = Q_gen
+        
+        # Check termination condition (step 7: if t - t* >= d then return)
+        if (gen + 1) - t_star >= patience:
             break
 
-        # Produce offspring via crossover/mutation
-        # Per pseudocode: R_{t+1} := offspring ∪ R_t  (we do not trim population here)
-        new_population = []
-        # Keep parents (Rt) as part of next generation
-        for r in Rt:
-            new_population.append(r.copy())
+        # Elitism: keep the best individual
+        new_population = [population[current_best_idx].copy()]
 
-        # Generate children by crossing parents from Rt
-        # We'll generate population_size children pairs (can be adjusted)
-        num_children_pairs = max(1, population_size)
-        for _ in range(num_children_pairs):
+        # Fill the rest of the population by breeding from Rt
+        while len(new_population) < population_size:
+            # Choose two parents from Rt (uniform)
             parents_idx = np.random.choice(len(Rt), size=2, replace=True)
             parent1 = Rt[parents_idx[0]].copy()
             parent2 = Rt[parents_idx[1]].copy()
 
+            # Crossover
             if np.random.random() < crossover_prob:
                 mask = np.random.randint(0, 2, n_features)
                 child1 = np.where(mask, parent1, parent2)
@@ -360,11 +416,7 @@ def genetic_algorithm(X, y, feature_names: List[str],
                 child[mutation_mask] = 1 - child[mutation_mask]
                 new_population.append(child)
 
-        # Now set population to the union (Rt U offspring) exactly per pseudocode
-        try:
-            population = np.array(new_population)
-        except Exception:
-            population = np.array(new_population[:population_size])
+        population = np.array(new_population[:population_size])
     
     selected_indices = np.where(best_chromosome == 1)[0]
     if len(selected_indices) == 0:
@@ -392,34 +444,37 @@ def stochastic_search_with_adaptation(
     T: int = 30,
     r: int = 10,
     h: float = 0.05,
-    d: int = 3,
+    d: int = 5,
     test_size: float = 0.2,
 ) -> Tuple[np.ndarray, Dict]:
     """
-    Stochastic Search without Adaptation (SSA)
+    Stochastic Search with Adaptation (SPA)
     
-    Performs random search over feature subsets with uniform probability.
-    No learning or probability adaptation across iterations.
+    Performs random search over feature subsets with probability adaptation.
+    Adapts probabilities based on best and worst solutions found.
     
     Algorithm:
     1. Initialize equal probabilities p_i = 1/n for each feature
-    2. For each iteration t:
-       a. Sample r random subsets of size j from distribution {p_1, ..., p_n}
-       b. Find best subset J_t^min with lowest Q
-       c. Find worst subset J_t^max with highest Q
-       d. Adjust probabilities for features in J_t^max (but no adaptation in pure SSA)
-       e. Find best overall J_t*
-    3. Return best solution found
+    2. For each complexity j from j0 to n:
+       a. For each iteration t = 1 to T:
+          - Sample r random subsets of size j from distribution {p_1, ..., p_n}
+          - Find best subset J_min with lowest Q
+          - Find worst subset J_max with highest Q
+          - Punish features in J_max, reward features in J_min
+       b. Record best set J_j for complexity j
+       c. Update global best if Q(J_j) < Q*
+       d. Stop if j - j* >= d
+    3. Return best solution J_j*
     
     Args:
         X: Feature matrix (n_samples x n_features)
         y: Labels
         feature_names: List of feature names
-        j0: minimal subset size
-        T: iterations per complexity
-        r: samples per iteration
-        h: punishment step
-        d: patience/early-stop across complexities
+        j0: Starting complexity (minimum feature set size)
+        T: Number of iterations per complexity level
+        r: Number of random samples per iteration
+        h: Penalty/reward step size
+        d: Patience parameter for early stopping
         test_size: Proportion of data to use for testing
     
     Returns:
@@ -438,15 +493,14 @@ def stochastic_search_with_adaptation(
 
     best_J = None
     best_Q = float('inf')
+    j_star = j0
+    Q_star = float('inf')
 
     # For each complexity j
-    # Track best across complexities for early stopping
-    Q_global_star = float('inf')
-    j_star = j0
-
     for j in range(j0, n_features + 1):
-        best_J_for_j = None
-        best_Q_for_j = float('inf')
+        J_j = None  # Best set for complexity j
+        Q_j = float('inf')  # Best Q for complexity j
+        
         for t in range(1, T + 1):
             J_min = None
             Q_min = float('inf')
@@ -480,12 +534,24 @@ def stochastic_search_with_adaptation(
                         Q_max = Q
                         J_max = selected.copy()
 
+                    # Track best overall
                     if Q < best_Q:
                         best_Q = Q
                         best_J = selected.copy()
-                        tracker.record_iteration((j - j0) * T + t, best_J, best_Q)
+                    
+                    # Track best for this complexity j
+                    if Q < Q_j:
+                        Q_j = Q
+                        J_j = selected.copy()
                 except Exception:
                     continue
+
+            # Record best set found in this iteration t (for better visualization)
+            if J_min is not None:
+                iteration_num = (j - j0) * T + t
+                # Only record if it's an improvement or first iteration of this complexity
+                if not tracker.selected_features_history or Q_min < tracker.quality_history[-1] or t == 1:
+                    tracker.record_iteration(iteration_num, J_min, Q_min, complexity=j)
 
             # punishment for features in J_max
             if J_max is not None:
@@ -507,37 +573,33 @@ def stochastic_search_with_adaptation(
                     p = np.ones_like(p) / len(p)
                 else:
                     p = p / p.sum()
+        
+        # Also record final best set for complexity j (J_j according to pseudocode step 9)
+        if J_j is not None:
+            iteration_num = (j - j0) * T + T  # End of iteration for complexity j
+            # Only record if it's different from last recorded
+            if not tracker.selected_features_history or not np.array_equal(tracker.selected_features_history[-1], J_j):
+                tracker.record_iteration(iteration_num, J_j, Q_j, complexity=j)
+            
+            # Update global best (step 10)
+            if Q_j < Q_star:
+                j_star = j
+                Q_star = Q_j
+                best_J = J_j.copy()
+            
+            # Check termination condition (step 11)
+            if j - j_star >= d:
+                break
 
-        # After T iterations for this complexity j, find best found for complexity j
-        if best_J is not None:
-            best_J_for_j = best_J.copy()
-            best_Q_for_j = best_Q
-
-        # Update global best across complexities and check early stopping per pseudocode
-        if best_Q_for_j < Q_global_star:
-            Q_global_star = best_Q_for_j
-            j_star = j
-
-        if j - j_star >= d:
-            # return the best found for complexity j_star
-            if best_J_for_j is None:
-                best_J_for_j = np.array([0])
-            return best_J_for_j, {
-                'algorithm': 'Stochastic Search with Adaptation (SPA)',
-                'tracker': tracker,
-                'iterations': (j - j0 + 1) * T,
-                'final_quality': Q_global_star,
-                'selected_count': len(best_J_for_j),
-            }
-
+    # Return J_j* according to pseudocode
     if best_J is None:
         best_J = np.array([0])
-
+    
     return best_J, {
         'algorithm': 'Stochastic Search with Adaptation (SPA)',
         'tracker': tracker,
         'iterations': (n_features - j0 + 1) * T,
-        'final_quality': best_Q,
+        'final_quality': Q_star if Q_star < float('inf') else best_Q,
         'selected_count': len(best_J),
     }
 

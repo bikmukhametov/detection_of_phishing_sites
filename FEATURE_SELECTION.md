@@ -105,8 +105,8 @@ stochastic_search_with_adaptation(X, y, feature_names, j0=1, T=30, r=10, h=0.05,
 **Функции:**
 
 1. **`save_feature_selection_results(results, output_dir)`**
-   - Сохраняет единый сводный отчет в Markdown (`feature_selection_summary.md`)
-   - Не создает дублирующие `.csv`, `.json` или отдельные `*_features.txt` — отчёт и графики считаются основными артефактами
+   - Сохраняет результаты в CSV и JSON форматах
+   - Создает текстовые файлы с выбранными признаками для каждого алгоритма
 
 2. **`plot_algorithm_comparison(results, output_dir)`**
    - Создает графики сравнения метрик между алгоритмами
@@ -230,8 +230,8 @@ Add-Del: 2 features, F1=0.9189
 Testing Genetic Algorithm...
 Genetic Algorithm: 21 features, F1=0.9630
 
-Testing SPA...
-SPA: 21 features, F1=0.9541
+Testing SSA...
+SSA: 21 features, F1=0.9541
 ```
 
 ### Сравнение алгоритмов:
@@ -240,11 +240,11 @@ SPA: 21 features, F1=0.9541
 |----------|-----------|----------|-----------|--------|----|---------| 
 | Add-Del | 2 | 0.9100 | 0.8947 | 0.9444 | 0.9189 | 0.9257 |
 | Genetic Algorithm | 21 | 0.9600 | 0.9630 | 0.9630 | 0.9630 | 0.9952 |
-| Stochastic Search (SPA) | 21 | 0.9500 | 0.9455 | 0.9630 | 0.9541 | 0.9867 |
+| Stochastic Search (SSA) | 21 | 0.9500 | 0.9455 | 0.9630 | 0.9541 | 0.9867 |
 
 **Выводы:**
 - **Add-Del** быстро находит минимальный набор (2 признака), но качество ниже
--- **Genetic Algorithm** и **SPA** находят более сложные наборы с лучшим качеством
+- **Genetic Algorithm** и **SSA** находят более сложные наборы с лучшим качеством
 - Генетический алгоритм показал лучший ROC-AUC (0.9952)
 - Все алгоритмы демонстрируют хорошую обобщающую способность (F1 > 0.91)
 
@@ -272,13 +272,11 @@ genetic_algorithm(X_scaled, y, feature_names,
                  test_size=0.2)
 ```
 
-### Stochastic Search (SPA):
+### Stochastic Search (SSA):
 ```python
 stochastic_search_with_adaptation(X_scaled, y, feature_names,
-                                    j0=1,
-                                    T=100,
-                                    r=5,
-                                    h=0.05,
+                                    iterations=100,
+                                    sample_size=5,
                                     test_size=0.2)
 ```
 
@@ -288,6 +286,6 @@ stochastic_search_with_adaptation(X_scaled, y, feature_names,
 
 - **Add-Del Algorithm**: Последовательный отбор признаков (Sequential Feature Selection)
 - **Genetic Algorithm**: Эволюционные алгоритмы оптимизации
--- **SPA**: Случайный поиск в пространстве подмножеств признаков с адаптацией вероятностей (Random Search with Adaptation)
+- **SSA**: Случайный поиск в пространстве подмножеств признаков (Random Search)
 
 Все алгоритмы используют критерий качества Q (ошибка классификации) и логистическую регрессию как базовый классификатор.

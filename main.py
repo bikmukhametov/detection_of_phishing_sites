@@ -65,8 +65,8 @@ def run_feature_selection_analysis(X_scaled, feature_df, label_series, output_di
     try:
         selected_indices_addel, stats_addel = add_del_algorithm(
             X_scaled, y, feature_names,
-            max_iterations=30,
-            patience=5,
+            max_iterations=25,
+            patience=10,
             test_size=0.2
         )
         
@@ -88,10 +88,10 @@ def run_feature_selection_analysis(X_scaled, feature_df, label_series, output_di
     try:
         selected_indices_ga, stats_ga = genetic_algorithm(
             X_scaled, y, feature_names,
-            population_size=50,
-            generations=35,
-            mutation_rate=0.15,
-            crossover_prob=0.8,
+            population_size=40,
+            generations=30,
+            mutation_rate=0.12,
+            crossover_prob=0.85,
             patience=10,
             test_size=0.2
         )
@@ -115,10 +115,10 @@ def run_feature_selection_analysis(X_scaled, feature_df, label_series, output_di
         selected_indices_spa, stats_spa = stochastic_search_with_adaptation(
             X_scaled, y, feature_names,
             j0=1,
-            T=25,
-            r=10,
-            h=0.05,
-            d=3,
+            T=15,
+            r=20,
+            h=0.03,
+            d=5,
             test_size=0.2,
         )
 
@@ -148,6 +148,11 @@ def run_feature_selection_analysis(X_scaled, feature_df, label_series, output_di
     plot_quality_vs_feature_count(results, output_dir)
     plot_convergence_curves(results, output_dir)
     plot_feature_count_progression(results, output_dir)
+    
+    print("Создание специфичных графиков для алгоритмов...")
+    from src.feature_analysis import plot_algorithm_specific_visualizations
+    plot_algorithm_specific_visualizations(results, output_dir)
+    
     create_summary_markdown(results, output_dir, feature_names)
     
     print(f"Результаты отбора признаков сохранены в: {output_dir}")
@@ -191,7 +196,9 @@ def main():
 
     # For each run: save tables and plots
     for run_name, run_info in all_runs.items():
-        run_dir = out_root / run_name
+        # Replace "=" with "_" in run_name to avoid Windows file path issues
+        safe_run_name = run_name.replace("=", "_")
+        run_dir = out_root / safe_run_name
         ensure_dir(run_dir)
 
         clusters = run_info["labels"]
