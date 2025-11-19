@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Dict, List, Optional
 import json
 
+from src.feature_labels import translate_feature_sequence
+
 
 def save_feature_selection_results(results: Dict, output_dir: Path) -> None:
     """
@@ -409,6 +411,7 @@ def create_summary_markdown(results: Dict, output_dir: Path, all_feature_names: 
         for algo_name in results.keys():
             algo_result = results[algo_name]
             selected_features = algo_result['selected_feature_names']
+            selected_features_ru = translate_feature_sequence(selected_features)
             metrics = algo_result['metrics']
             stats = algo_result['stats']
             
@@ -426,7 +429,7 @@ def create_summary_markdown(results: Dict, output_dir: Path, all_feature_names: 
             f.write(f'- ROC-AUC: {metrics["roc_auc"]:.4f}\n\n')
             
             f.write(f'**Выбранные признаки ({len(selected_features)}):**\n')
-            for i, feat in enumerate(selected_features, 1):
+            for i, feat in enumerate(selected_features_ru, 1):
                 f.write(f'{i}. {feat}\n')
             
             f.write('\n---\n\n')

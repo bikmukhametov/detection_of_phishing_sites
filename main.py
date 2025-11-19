@@ -92,7 +92,7 @@ def run_feature_selection_analysis(X_scaled, feature_df, label_series, output_di
             generations=30,
             mutation_rate=0.12,
             crossover_prob=0.85,
-            patience=10,
+            patience=5,
             test_size=0.2
         )
         

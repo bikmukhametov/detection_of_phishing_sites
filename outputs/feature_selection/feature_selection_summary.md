@@ -5,8 +5,8 @@
 | Алгоритм | Признаков | Accuracy | Precision | Recall | F1 | ROC-AUC |
 |----------|-----------|----------|-----------|--------|----|---------|
 | Add-Del | 11 | 0.9457 | 0.9447 | 0.9585 | 0.9516 | 0.9876 |
-| Genetic Algorithm | 26 | 0.9466 | 0.9413 | 0.9642 | 0.9526 | 0.9880 |
-| Stochastic Search (SPA) | 19 | 0.9448 | 0.9301 | 0.9740 | 0.9515 | 0.9866 |
+| Genetic Algorithm | 21 | 0.9475 | 0.9358 | 0.9724 | 0.9537 | 0.9857 |
+| Stochastic Search (SPA) | 22 | 0.9435 | 0.9424 | 0.9569 | 0.9496 | 0.9846 |
 
 ## Add-Del
 
@@ -23,98 +23,96 @@
 - ROC-AUC: 0.9876
 
 **Выбранные признаки (11):**
-1. having_IP_Address
-2. URL_Length
-3. Prefix_Suffix
-4. having_Sub_Domain_legit
-5. SSLfinal_State
-6. Domain_registeration_length
-7. URL_of_Anchor_phish
-8. URL_of_Anchor_suspic
-9. Links_in_tags
-10. SFH
-11. Google_Index
+1. IP_вместо_домена
+2. Длина_URL
+3. Дефис_в_домене
+4. Число_поддоменов
+5. Статус_SSL
+6. Срок_регистрации
+7. Фишинговый_домен_автора
+8. Подозрительный_домен_автора
+9. Ссылки_в_тегах
+10. Обработчик_форм
+11. Индекс_Google
 
 ---
 
 ## Genetic Algorithm
 
 **Статистика:**
-- Количество отобранных признаков: 26
-- Финальное значение Q (ошибка): 0.0534
+- Количество отобранных признаков: 21
+- Финальное значение Q (ошибка): 0.0525
 - Итераций: 30
 
 **Метрики качества:**
-- Accuracy: 0.9466
-- Precision: 0.9413
-- Recall: 0.9642
-- F1 Score: 0.9526
-- ROC-AUC: 0.9880
+- Accuracy: 0.9475
+- Precision: 0.9358
+- Recall: 0.9724
+- F1 Score: 0.9537
+- ROC-AUC: 0.9857
 
-**Выбранные признаки (26):**
-1. having_IP_Address
-2. URL_Length
-3. double_slash_redirecting
-4. Prefix_Suffix
-5. having_Sub_Domain_phish
-6. having_Sub_Domain_suspic
-7. having_Sub_Domain_legit
-8. SSLfinal_State
-9. Domain_registeration_length
-10. Favicon
-11. port
-12. URL_of_Anchor_phish
-13. URL_of_Anchor_legit
-14. Links_in_tags
-15. SFH
-16. Submitting_to_email
-17. Abnormal_URL
-18. Redirect
-19. RightClick
-20. popUpWidnow
-21. Iframe
-22. DNSRecord
-23. Page_Rank
-24. Google_Index
-25. Links_pointing_to_page
-26. Statistical_report
+**Выбранные признаки (21):**
+1. IP_вместо_домена
+2. Длина_URL
+3. Сервис_сокращения
+4. Двойной_слеш
+5. Дефис_в_домене
+6. Фишинговые_поддомены
+7. Число_поддоменов
+8. Статус_SSL
+9. Подозрительный_порт
+10. Фишинговый_домен_автора
+11. Подозрительный_домен_автора
+12. Ссылки_в_тегах
+13. Отправка_на_почту
+14. Аномальный_URL
+15. Число_редиректов
+16. Всплывающие_окна
+17. Невидимый_iframe
+18. DNS_записи
+19. Оценка PageRank
+20. Индекс_Google
+21. Внешние_ссылки
 
 ---
 
 ## Stochastic Search (SPA)
 
 **Статистика:**
-- Количество отобранных признаков: 19
-- Финальное значение Q (ошибка): 0.0552
+- Количество отобранных признаков: 22
+- Финальное значение Q (ошибка): 0.0565
 - Итераций: 540
 
 **Метрики качества:**
-- Accuracy: 0.9448
-- Precision: 0.9301
-- Recall: 0.9740
-- F1 Score: 0.9515
-- ROC-AUC: 0.9866
+- Accuracy: 0.9435
+- Precision: 0.9424
+- Recall: 0.9569
+- F1 Score: 0.9496
+- ROC-AUC: 0.9846
 
-**Выбранные признаки (19):**
-1. having_IP_Address
-2. Shortining_Service
-3. having_At_Symbol
-4. double_slash_redirecting
-5. Prefix_Suffix
-6. having_Sub_Domain_suspic
-7. having_Sub_Domain_legit
-8. SSLfinal_State
-9. port
-10. HTTPS_token
-11. URL_of_Anchor_phish
-12. URL_of_Anchor_legit
-13. Links_in_tags
-14. Submitting_to_email
-15. Abnormal_URL
-16. Iframe
-17. DNSRecord
-18. Google_Index
-19. Links_pointing_to_page
+**Выбранные признаки (22):**
+1. IP_вместо_домена
+2. Сервис_сокращения
+3. Символ_@
+4. Двойной_слеш
+5. Дефис_в_домене
+6. Фишинговые_поддомены
+7. Подозрительные_поддомены
+8. Статус_SSL
+9. Срок_регистрации
+10. Подозрительный_порт
+11. HTTPS_в_домене
+12. Фишинговый_домен_автора
+13. Подозрительный_домен_автора
+14. Легитимный_домен_автора
+15. Ссылки_в_тегах
+16. Отправка_на_почту
+17. Число_редиректов
+18. Правый_клик
+19. Низкий_веб_трафик
+20. Индекс_Google
+21. Внешние_ссылки
+22. Фishing_в_отчетах
 
 ---
 

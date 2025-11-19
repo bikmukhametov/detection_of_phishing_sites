@@ -10,6 +10,8 @@ from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score
 from scipy.stats import chi2_contingency
 
+from src.feature_labels import translate_feature_name, translate_feature_sequence
+
 
 def _ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
@@ -82,8 +84,9 @@ def plot_low_cardinality_proportions_paged(
                 ax=ax,
                 palette="tab10",
             )
+            translated_feat = translate_feature_name(feat)
             ax.set_title(
-                textwrap.fill(str(feat), width=80),
+                textwrap.fill(str(translated_feat), width=80),
                 fontsize=10,
                 bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="0.8", alpha=0.9),
             )
@@ -353,6 +356,8 @@ def plot_cluster_means_with_phishing(
             groups_created += 1
     
     # Plot 1: All features
+    feature_labels = translate_feature_sequence(feature_names)
+
     fig, ax = plt.subplots(figsize=(max(16, len(feature_names) * 0.3), 8))
     x_pos = np.arange(len(feature_names))
     width = 0.8 / (k + 1)
@@ -371,7 +376,7 @@ def plot_cluster_means_with_phishing(
     ax.set_ylabel('Среднее значение (стандартизованное)', fontsize=12)
     ax.set_title(f'{title_prefix} — все признаки', fontsize=14, fontweight='bold')
     ax.set_xticks(x_pos)
-    ax.set_xticklabels(feature_names, rotation=90, ha='right', fontsize=8)
+    ax.set_xticklabels(feature_labels, rotation=90, ha='right', fontsize=8)
     ax.legend(loc='best', fontsize=9)
     ax.grid(True, alpha=0.3, linestyle='--')
     plt.tight_layout()
@@ -385,6 +390,7 @@ def plot_cluster_means_with_phishing(
             
         fig, ax = plt.subplots(figsize=(14, 8))
         x_pos = np.arange(len(group_features))
+        group_feature_labels = translate_feature_sequence(group_features)
         
         for idx, cl in enumerate(unique_clusters):
             means = cluster_means.loc[cl, group_features].values
@@ -401,7 +407,7 @@ def plot_cluster_means_with_phishing(
         ax.set_title(f'{title_prefix} — группа {group_idx} ({len(group_features)} признаков)', 
                     fontsize=14, fontweight='bold')
         ax.set_xticks(x_pos)
-        ax.set_xticklabels(group_features, rotation=45, ha='right', fontsize=10)
+        ax.set_xticklabels(group_feature_labels, rotation=45, ha='right', fontsize=10)
         ax.legend(loc='best', fontsize=10)
         ax.grid(True, alpha=0.3, linestyle='--')
         plt.tight_layout()
@@ -450,13 +456,14 @@ def plot_chi2_feature_importance(
         )
 
     df_chi2 = pd.DataFrame(chi2_results).sort_values(by="Chi2_Statistic", ascending=False).reset_index(drop=True)
+    df_chi2["Feature_Display"] = df_chi2["Feature"].apply(translate_feature_name)
 
     # Visualization
     plt.figure(figsize=figsize)
     sns.barplot(
-        x="Feature",
+        x="Feature_Display",
         y="Chi2_Statistic",
-        hue="Feature",
+        hue="Feature_Display",
         data=df_chi2,
         palette=sns.color_palette("viridis", len(df_chi2)),
         legend=False,
