@@ -160,7 +160,7 @@ def plot_clusters_pca(
     # Plot points separately for phishing and legitimate sites
     unique_clusters = sorted(np.unique(clusters[clusters >= 0]))
     
-    # Plot phishing sites (squares)
+    # Plot phishing sites (circles)
     phishing_df = plot_df[plot_df["is_phishing"]]
     if len(phishing_df) > 0:
         for idx, cluster_label in enumerate(unique_clusters):
@@ -170,7 +170,7 @@ def plot_clusters_pca(
                 ax.scatter(
                     cluster_data["x"],
                     cluster_data["y"],
-                    marker="s",  # square for phishing
+                    marker="o",  # circle for phishing
                     s=40,
                     c=[palette[color_idx]],
                     alpha=0.8,
@@ -179,7 +179,7 @@ def plot_clusters_pca(
                     label=f"Cluster {cluster_label} (Phishing)" if idx == 0 else "",
                 )
     
-    # Plot legitimate sites (circles)
+    # Plot legitimate sites (crosses)
     legitimate_df = plot_df[~plot_df["is_phishing"]]
     if len(legitimate_df) > 0:
         for idx, cluster_label in enumerate(unique_clusters):
@@ -189,12 +189,11 @@ def plot_clusters_pca(
                 ax.scatter(
                     cluster_data["x"],
                     cluster_data["y"],
-                    marker="o",  # circle for legitimate
-                    s=40,
+                    marker="x",  # cross for legitimate
+                    s=35,
                     c=[palette[color_idx]],
-                    alpha=0.8,
-                    edgecolor="k",
-                    linewidth=0.15,
+                    alpha=0.85,
+                    linewidths=1.8,
                     label=f"Cluster {cluster_label} (Legitimate)" if idx == 0 else "",
                 )
 
@@ -240,12 +239,12 @@ def plot_clusters_pca(
         Line2D([0], [0], marker="", color="w", label="")  # Empty line for spacing
     )
     legend_elements.append(
-        Line2D([0], [0], marker="s", color="w", markerfacecolor="darkred",
-               markersize=10, markeredgecolor="k", markeredgewidth=0.5, label="Фишинг (квадрат)")
+        Line2D([0], [0], marker="o", color="w", markerfacecolor="darkred",
+               markersize=10, markeredgecolor="k", markeredgewidth=0.5, label="Фишинг (круг)")
     )
     legend_elements.append(
-        Line2D([0], [0], marker="o", color="w", markerfacecolor="darkgreen",
-               markersize=10, markeredgecolor="k", markeredgewidth=0.5, label="Законный (круг)")
+        Line2D([0], [0], marker="x", color="darkgreen",
+               markersize=9, markeredgewidth=2.2, label="Законный (крест)")
     )
     plt.legend(handles=legend_elements, loc="best", fontsize=9, framealpha=0.9)
     

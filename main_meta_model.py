@@ -103,10 +103,10 @@ def evaluate_meta_model(
     pipeline.fit(X_train, y_train)
 
     weights = pipeline.named_steps["model"].coef_.flatten()
-    bias = pipeline.named_steps["model"].intercept_[0]
-    weight_series = pd.Series(weights, index=feature_cols, name="Вес")
+    total_weight = weights.sum() if weights.sum() != 0 else 1.0
+    normalized_weights = weights / total_weight
+    weight_series = pd.Series(normalized_weights, index=feature_cols, name="Нормированный вес")
     weight_df = weight_series.reset_index().rename(columns={"index": "Алгоритм"})
-    weight_df["Свободный член"] = bias
 
     y_pred = pipeline.predict(X_test)
     metrics = {
