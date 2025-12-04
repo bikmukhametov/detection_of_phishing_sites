@@ -337,7 +337,7 @@ def plot_algorithm_specific_visualizations(results: Dict, output_dir: Path) -> N
                 ax2.plot(iterations_filt, feature_counts_filt, '-', linewidth=1, alpha=0.3, color='gray')
             else:
                 ax2.plot(iterations_filt, feature_counts_filt, 'o-', linewidth=2, markersize=4, 
-                        color='#2ca02c', alpha=0.8)
+                        color="#3bac3b", alpha=0.8)
             
             ax2.set_xlabel('Итерация', fontsize=11)
             ax2.set_ylabel('Количество признаков', fontsize=11)

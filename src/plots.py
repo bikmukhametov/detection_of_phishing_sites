@@ -244,7 +244,7 @@ def plot_clusters_pca(
     )
     legend_elements.append(
         Line2D([0], [0], marker="x", color="darkgreen",
-               markersize=9, markeredgewidth=2.2, label="Законный (крест)")
+               markersize=9, markeredgewidth=2.2, label="Легитимный (крест)")
     )
     plt.legend(handles=legend_elements, loc="best", fontsize=9, framealpha=0.9)
     
