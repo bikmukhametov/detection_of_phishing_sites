@@ -1,16 +1,20 @@
 """
-Run comparison of sklearn BaggingClassifier vs custom bagging.
+Run comparison of sklearn BaggingClassifier vs custom bagging on SELECTED FEATURES.
 
-Produces outputs in `outputs/bagging/`:
+Produces outputs in `outputs/bagging_selected/`:
 - `bagging_summary.md` — markdown report
-- `bagging_metrics.png` — bar chart of metrics
-- `bagging_roc.png` — ROC curves comparison
+- `bagging_metrics_lr.png` — bar chart of metrics for logistic regression
+- `bagging_metrics_dt.png` — bar chart of metrics for decision tree
+- `bagging_predictions_pca_lr.png` — PCA visualization of predictions (LR)
+- `bagging_predictions_pca_dt.png` — PCA visualization of predictions (DT)
 
-Usage: python bagging_run.py
+Usage: python bagging_selected_run.py
 """
 from pathlib import Path
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
 from sklearn.ensemble import BaggingClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
@@ -23,6 +27,8 @@ from sklearn.metrics import (
     roc_auc_score,
     roc_curve,
 )
+import seaborn as sns
+from matplotlib.lines import Line2D
 
 from src.data_loader import load_dataset
 from src.preprocess import preprocess_features
@@ -55,6 +61,96 @@ def metrics_dict(y_true, y_pred, y_proba):
         'f1': f1,
         'roc_auc': roc,
     }
+
+
+def plot_predictions_pca(X_test, y_test, y_pred_sklearn, y_pred_custom, estimator_name, out_file):
+    """Plot predictions in 2D using PCA reduction, comparing sklearn vs custom bagging.
+    
+    Args:
+        X_test: Test feature matrix
+        y_test: True labels
+        y_pred_sklearn: Predictions from sklearn BaggingClassifier
+        y_pred_custom: Predictions from CustomBaggingClassifier
+        estimator_name: Name of base estimator (e.g., "Логистическая регрессия")
+        out_file: Path to save the plot
+    """
+    # PCA to 2D
+    pca = PCA(n_components=2, random_state=42)
+    X2 = pca.fit_transform(X_test)
+    
+    # Create dataframe for visualization
+    plot_df = pd.DataFrame(X2, columns=['x', 'y'])
+    plot_df['true_label'] = y_test
+    plot_df['sklearn_pred'] = y_pred_sklearn
+    plot_df['custom_pred'] = y_pred_custom
+    plot_df['is_phishing_true'] = y_test == 1
+    
+    # Create figure with 2 subplots
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5.5))
+    
+    # Color palette for classes
+    palette = {0: '#1f77b4', 1: '#ff7f0e'}  # blue for legitimate, orange for phishing
+    
+    # Plot 1: sklearn predictions
+    ax = axes[0]
+    for pred_class in [0, 1]:
+        class_data = plot_df[plot_df['sklearn_pred'] == pred_class]
+        is_phishing = class_data['is_phishing_true']
+        
+        # Correct predictions (circles)
+        correct = class_data[is_phishing == pred_class]
+        ax.scatter(correct['x'], correct['y'], c=palette[pred_class], marker='o', s=50,
+                  alpha=0.7, edgecolor='k', linewidth=0.5, label=f'Предсказание: {pred_class}')
+        
+        # Incorrect predictions (X markers)
+        incorrect = class_data[is_phishing != pred_class]
+        if len(incorrect) > 0:
+            ax.scatter(incorrect['x'], incorrect['y'], c=palette[pred_class], marker='x', s=50,
+                      alpha=0.9, linewidth=1.5)
+    
+    explained_var = pca.explained_variance_ratio_
+    ax.set_xlabel(f'ГК1 ({explained_var[0]*100:.1f}%)')
+    ax.set_ylabel(f'ГК2 ({explained_var[1]*100:.1f}%)')
+    ax.set_title(f'sklearn Bagging — {estimator_name}')
+    ax.grid(True, alpha=0.3)
+    
+    # Plot 2: custom predictions
+    ax = axes[1]
+    for pred_class in [0, 1]:
+        class_data = plot_df[plot_df['custom_pred'] == pred_class]
+        is_phishing = class_data['is_phishing_true']
+        
+        # Correct predictions (circles)
+        correct = class_data[is_phishing == pred_class]
+        ax.scatter(correct['x'], correct['y'], c=palette[pred_class], marker='o', s=50,
+                  alpha=0.7, edgecolor='k', linewidth=0.5, label=f'Предсказание: {pred_class}')
+        
+        # Incorrect predictions (X markers)
+        incorrect = class_data[is_phishing != pred_class]
+        if len(incorrect) > 0:
+            ax.scatter(incorrect['x'], incorrect['y'], c=palette[pred_class], marker='x', s=50,
+                      alpha=0.9, linewidth=1.5)
+    
+    ax.set_xlabel(f'ГК1 ({explained_var[0]*100:.1f}%)')
+    ax.set_ylabel(f'ГК2 ({explained_var[1]*100:.1f}%)')
+    ax.set_title(f'Custom Bagging — {estimator_name}')
+    ax.grid(True, alpha=0.3)
+    
+    # Create custom legend
+    legend_elements = [
+        Line2D([0], [0], marker='o', color='w', markerfacecolor='#1f77b4', markersize=10, 
+               markeredgecolor='k', markeredgewidth=0.5, label='Класс 0 (Легит.)'),
+        Line2D([0], [0], marker='o', color='w', markerfacecolor='#ff7f0e', markersize=10,
+               markeredgecolor='k', markeredgewidth=0.5, label='Класс 1 (Фишинг)'),
+        Line2D([0], [0], marker='x', color='gray', markersize=10, markeredgewidth=1.5, 
+               label='Ошибка предсказания'),
+    ]
+    fig.legend(handles=legend_elements, loc='upper center', ncol=3, bbox_to_anchor=(0.5, -0.02), fontsize=10)
+    
+    fig.suptitle(f'PCA визуализация предсказаний Bagging', fontsize=13, fontweight='bold')
+    plt.tight_layout(rect=[0, 0.05, 1, 0.96])
+    plt.savefig(out_file, dpi=150, bbox_inches='tight')
+    plt.close()
 
 
 def run():
@@ -105,17 +201,23 @@ def run():
         custom_pred = custom.predict(X_test)
         custom_metrics = metrics_dict(y_test, custom_pred, custom_proba)
 
-        return sklearn_metrics, custom_metrics
+        return sklearn_metrics, custom_metrics, sklearn_pred, custom_pred
 
     # Run with LogisticRegression
-    sklearn_metrics_lr, custom_metrics_lr = run_comparison(
+    sklearn_metrics_lr, custom_metrics_lr, y_pred_sklearn_lr, y_pred_custom_lr = run_comparison(
         LogisticRegression(max_iter=1000)
     )
 
     # Run with DecisionTree
-    sklearn_metrics_dt, custom_metrics_dt = run_comparison(
+    sklearn_metrics_dt, custom_metrics_dt, y_pred_sklearn_dt, y_pred_custom_dt = run_comparison(
         DecisionTreeClassifier(max_depth=5)
     )
+
+    # Save PCA visualizations
+    plot_predictions_pca(X_test, y_test, y_pred_sklearn_lr, y_pred_custom_lr,
+                         'Логистическая регрессия', out / 'bagging_predictions_pca_lr.png')
+    plot_predictions_pca(X_test, y_test, y_pred_sklearn_dt, y_pred_custom_dt,
+                         'Дерево решений', out / 'bagging_predictions_pca_dt.png')
 
     # Save comparison plots for LR
     metrics_names = ['accuracy', 'precision', 'recall', 'f1', 'roc_auc']
