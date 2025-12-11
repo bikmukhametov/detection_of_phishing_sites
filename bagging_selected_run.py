@@ -191,7 +191,7 @@ def run():
             base_estimator=base_estimator,
             n_estimators=30,
             max_samples=0.8,
-            max_features=0.6,
+            max_features=0.8,
             bootstrap=True,
             bootstrap_features=False,
             random_state=42,

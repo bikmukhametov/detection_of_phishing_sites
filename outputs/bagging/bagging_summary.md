@@ -7,14 +7,14 @@
 | Реализация | Accuracy | Precision | Recall | F1 | ROC-AUC |
 |---|---:|---:|---:|---:|---:|
 | sklearn Bagging | 0.9376 | 0.9343 | 0.9551 | 0.9446 | 0.9858 |
-| Custom Bagging | 0.9307 | 0.9244 | 0.9534 | 0.9387 | 0.9843 |
+| Custom Bagging | 0.9373 | 0.9315 | 0.9578 | 0.9445 | 0.9854 |
 
 ## Результаты: Дерево решений
 
 | Реализация | Accuracy | Precision | Recall | F1 | ROC-AUC |
 |---|---:|---:|---:|---:|---:|
 | sklearn Bagging | 0.9379 | 0.9423 | 0.9464 | 0.9444 | 0.9844 |
-| Custom Bagging | 0.9397 | 0.9373 | 0.9556 | 0.9464 | 0.9855 |
+| Custom Bagging | 0.9358 | 0.9305 | 0.9561 | 0.9431 | 0.9843 |
 
 ## Как работает sklearn.BaggingClassifier
 
